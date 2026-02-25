@@ -11,7 +11,7 @@ echo -e "${YELLOW}🔍 正在执行 pre-commit 钩子：检查敏感信息...${N
 # 定义要检查的正则表达式模式 (可根据需要自行增删)
 PATTERNS=(
   # 1. 匹配常见的 Bearer Token (考虑到你的项目中有很多 API 调用)
-  'Bearer [a-zA-Z0-9\-\._~\+\/]{20,2}'
+  'Bearer [a-zA-Z0-9\-\._~\+\/]{20,}=*'
   
   # 2. 匹配硬编码的滴答清单 Token 赋值操作 (例如：accessToken = "ey...")
   # 排除掉获取环境变量的操作 (如 process.env.DIDA365_ACCESS_TOKEN)
@@ -45,11 +45,8 @@ for FILE in $STAGED_FILES; do
 
   for PATTERN in "${PATTERNS[@]}"; do
     # 使用 git grep 在暂存区的内容中搜索模式
-    # --cached: 只检查 staged 的内容
-    # -E: 使用扩展正则表达式
-    # -n: 显示行号
-    # -I: 忽略二进制文件
-    MATCHES=$(git grep --cached -E -n -I "$PATTERN" -- "$FILE")
+    # 使用 -e "$PATTERN" 避免以 - 开头的 pattern 被当做选项参数
+    MATCHES=$(git grep --cached -E -n -I -e "$PATTERN" -- "$FILE")
     
     if [ ! -z "$MATCHES" ]; then
       echo -e "${RED}❌ 拦截：在将要提交的文件 $FILE 中检测到疑似个人敏感信息！${NC}"
