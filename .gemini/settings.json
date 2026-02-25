@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dida365-skill": {
+      "command": "node /Users/zhoupofan/hexisyztem_skills/dida365-schedule/mcp-server.js",
+      "args": []
+    }
+  }
+}

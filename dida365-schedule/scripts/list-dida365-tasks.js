@@ -33,6 +33,40 @@ async function request(path, accessToken) {
     });
 }
 
+function formatTasksOutput(result) {
+    let output = '\n📋 滴答清单任务列表\n';
+    output += '='.repeat(60) + '\n\n';
+    
+    result.forEach(project => {
+        if (project.tasks.length > 0) {
+            output += `📁 ${project.name} (项目ID: ${project.id})\n`;
+            output += '-'.repeat(60) + '\n';
+            
+            project.tasks.forEach((task, index) => {
+                output += `  ${index + 1}. 📝 ${task.title}\n`;
+                output += `     └─ ID: ${task.id}\n`;
+                
+                if (task.dueDate) {
+                    const date = new Date(task.dueDate);
+                    output += `     └─ 截止: ${date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n`;
+                }
+                
+                if (task.items && task.items.length > 0) {
+                    output += `     └─ 子任务 (${task.items.length}个):\n`;
+                    task.items.forEach((item, itemIndex) => {
+                        const statusIcon = item.status === 'completed' ? '✅' : '⏳';
+                        output += `        ${itemIndex + 1}. ${statusIcon} ${item.title} (ID: ${item.id})\n`;
+                    });
+                }
+                output += '\n';
+            });
+            output += '\n';
+        }
+    });
+    
+    return output;
+}
+
 async function listAllTasks() {
     const accessToken = process.env.DIDA365_ACCESS_TOKEN;
     if (!accessToken) {
@@ -62,6 +96,9 @@ async function listAllTasks() {
                         id: task.id,
                         title: task.title,
                         dueDate: task.dueDate,
+                        priority: task.priority,
+                        content: task.content,
+                        desc: task.desc,
                         items: []
                     };
                     
@@ -86,3 +123,15 @@ async function listAllTasks() {
 }
 
 module.exports = listAllTasks;
+
+// Add this back for direct execution and debugging
+if (require.main === module) {
+    listAllTasks()
+        .then(result => {
+            console.log(formatTasksOutput(result));
+        })
+        .catch(error => {
+            console.error("Error occurred:", error.message);
+            process.exit(1);
+        });
+}

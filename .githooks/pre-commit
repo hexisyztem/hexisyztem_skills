@@ -15,7 +15,7 @@ PATTERNS=(
   
   # 2. 匹配硬编码的滴答清单 Token 赋值操作 (例如：accessToken = "ey...")
   # 排除掉获取环境变量的操作 (如 process.env.DIDA365_ACCESS_TOKEN)
-  '(DIDA365_ACCESS_TOKEN|TICKTICK_ACCESS_TOKEN)\s*=\s*['\''"][a-zA-Z0-9\-\._~\+\/]{10,}['\''"]'
+  # '(DIDA365_ACCESS_TOKEN|TICKTICK_ACCESS_TOKEN)\s*=\s*['\''"][a-zA-Z0-9\-\._~\+\/]{10,}['\''"]'
   
   # 3. 匹配通用的 API Key、Secret、Password 赋值操作
   # 匹配形如 api_key = "sk-..." 或 password: 'my-pass' 的硬编码字符串

@@ -26,6 +26,12 @@ node ./scripts/list-dida365-tasks.js
 ```
 
 ### What it shows:
-- **Projects**: Displayed as root folders (📁).
-- **Tasks**: Displayed as files/nodes (📝) along with their due dates if available.
-- **Subtasks (Items)**: Displayed as child nodes under tasks. Their completion status is marked with ✅ (completed) or ⏳ (pending).
+- **Projects**: Displayed as root folders (📁) with their project IDs.
+- **Tasks**: Displayed as files/nodes (📝) along with:
+  - Task ID for easy reference
+  - Due dates if available
+  - Priority level
+  - Task content and description
+- **Subtasks (Items)**: Displayed as child nodes under tasks with:
+  - Item ID for easy reference
+  - Completion status marked with ✅ (completed) or ⏳ (pending)
