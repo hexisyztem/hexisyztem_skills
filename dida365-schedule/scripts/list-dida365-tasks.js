@@ -1,14 +1,7 @@
 // scripts/list-dida365-tasks.js
 const https = require('https');
 
-const accessToken = process.env.DIDA365_ACCESS_TOKEN;
-
-if (!accessToken) {
-    console.error('Error: DIDA365_ACCESS_TOKEN environment variable is not set.');
-    process.exit(1);
-}
-
-async function request(path) {
+async function request(path, accessToken) {
     const options = {
         hostname: 'api.dida365.com',
         port: 443,
@@ -24,8 +17,15 @@ async function request(path) {
             let data = '';
             res.on('data', d => data += d);
             res.on('end', () => {
-                if (res.statusCode === 200) resolve(JSON.parse(data));
-                else reject(`Error ${res.statusCode}: ${data}`);
+                if (res.statusCode === 200) {
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch (e) {
+                        reject(new Error(`Error parsing API response: ${data}`));
+                    }
+                } else {
+                    reject(new Error(`Dida365 API error: ${res.statusCode} - ${data}`));
+                }
             });
         });
         req.on('error', reject);
@@ -34,56 +34,55 @@ async function request(path) {
 }
 
 async function listAllTasks() {
+    const accessToken = process.env.DIDA365_ACCESS_TOKEN;
+    if (!accessToken) {
+        throw new Error('DIDA365_ACCESS_TOKEN environment variable is not set.');
+    }
+
+    const result = [];
     try {
-        const projects = await request('/open/v1/project');
+        const projects = await request('/open/v1/project', accessToken);
         
         if (projects.length === 0) {
-            console.log('No projects found.');
-            return;
+            return []; // Return empty array if no projects
         }
-
-        console.log('你的滴答清单任务层级目录：');
 
         for (const project of projects) {
-            const data = await request(`/open/v1/project/${project.id}/data`);
+            const projectData = {
+                id: project.id,
+                name: project.name,
+                tasks: []
+            };
+            const data = await request(`/open/v1/project/${project.id}/data`, accessToken);
             const tasks = data.tasks || [];
             
-            console.log(`
-📁 ${project.name}`);
-            
-            if (tasks.length === 0) {
-                console.log('   (空)');
-                continue;
+            if (tasks.length > 0) {
+                tasks.forEach((task) => {
+                    const taskData = {
+                        id: task.id,
+                        title: task.title,
+                        dueDate: task.dueDate,
+                        items: []
+                    };
+                    
+                    if (task.items && task.items.length > 0) {
+                        task.items.forEach((item) => {
+                            taskData.items.push({
+                                id: item.id,
+                                title: item.title,
+                                status: item.status === 1 ? 'completed' : 'pending'
+                            });
+                        });
+                    }
+                    projectData.tasks.push(taskData);
+                });
             }
-
-            tasks.forEach((task, index) => {
-                const isLastTask = index === tasks.length - 1;
-                const taskPrefix = isLastTask ? '└──' : '├──';
-                
-                let dueStr = '';
-                if (task.dueDate) {
-                    const dueDate = new Date(task.dueDate);
-                    dueStr = ` (截止: ${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')})`;
-                }
-                
-                console.log(`   ${taskPrefix} 📝 ${task.title}${dueStr}`);
-                
-                if (task.items && task.items.length > 0) {
-                    task.items.forEach((item, itemIndex) => {
-                        const isLastItem = itemIndex === task.items.length - 1;
-                        const itemPrefix = isLastTask 
-                            ? (isLastItem ? '    └──' : '    ├──') 
-                            : (isLastItem ? '│   └──' : '│   ├──');
-                        
-                        const statusIcon = item.status === 1 ? '✅' : '⏳';
-                        console.log(`   ${itemPrefix} ${statusIcon} ${item.title}`);
-                    });
-                }
-            });
+            result.push(projectData);
         }
+        return result;
     } catch (error) {
-        console.error('Failed to list tasks:', error);
+        throw new Error(`Failed to list tasks: ${error.message}`);
     }
 }
 
-listAllTasks();
+module.exports = listAllTasks;
