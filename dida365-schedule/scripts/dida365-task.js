@@ -66,3 +66,13 @@ async function createTask(title, options = {}) {
 }
 
 module.exports = createTask;
+
+if (require.main === module) {
+    const title = process.argv[2];
+    const optionsStr = process.argv[3];
+    let options = {};
+    if (optionsStr) {
+        options = JSON.parse(optionsStr);
+    }
+    createTask(title, options).then(res => console.log("Success:", JSON.stringify(res))).catch(err => { console.error(err); process.exit(1); });
+}

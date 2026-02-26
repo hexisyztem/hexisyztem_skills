@@ -1,0 +1,24 @@
+{
+  "name": "mi-assistant",
+  "version": "1.0.0",
+  "description": "Mi Home (Mijia) device control and automation integration",
+  "main": "mcp-server.js",
+  "scripts": {
+    "start": "node mcp-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mijia",
+    "mi-home",
+    "xiaomi",
+    "smart-home",
+    "iot",
+    "automation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1"
+  }
+}
