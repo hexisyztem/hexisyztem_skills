@@ -33,6 +33,35 @@ async function request(path, accessToken) {
     });
 }
 
+function formatTask(task, level = 0) {
+    const indent = '  '.repeat(level + 1);
+    const branch = level === 0 ? '📝 ' : '└─ 📝 ';
+    let output = `${indent}${branch}${task.title}\n`;
+    output += `${indent}   └─ ID: ${task.id}\n`;
+    
+    if (task.dueDate) {
+        const date = new Date(task.dueDate);
+        output += `${indent}   └─ 截止: ${date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n`;
+    }
+    
+    // Checklist items (if any)
+    if (task.items && task.items.length > 0) {
+        task.items.forEach((item, itemIndex) => {
+            const statusIcon = item.status === 'completed' ? '✅' : '⏳';
+            output += `${indent}   └─ ${statusIcon} ${item.title}\n`;
+        });
+    }
+
+    // Sub-tasks (recursion)
+    if (task.subTasks && task.subTasks.length > 0) {
+        task.subTasks.forEach(sub => {
+            output += formatTask(sub, level + 1);
+        });
+    }
+    
+    return output;
+}
+
 function formatTasksOutput(result) {
     let output = '\n📋 滴答清单任务列表\n';
     output += '='.repeat(60) + '\n\n';
@@ -42,22 +71,8 @@ function formatTasksOutput(result) {
             output += `📁 ${project.name} (项目ID: ${project.id})\n`;
             output += '-'.repeat(60) + '\n';
             
-            project.tasks.forEach((task, index) => {
-                output += `  ${index + 1}. 📝 ${task.title}\n`;
-                output += `     └─ ID: ${task.id}\n`;
-                
-                if (task.dueDate) {
-                    const date = new Date(task.dueDate);
-                    output += `     └─ 截止: ${date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n`;
-                }
-                
-                if (task.items && task.items.length > 0) {
-                    output += `     └─ 子任务 (${task.items.length}个):\n`;
-                    task.items.forEach((item, itemIndex) => {
-                        const statusIcon = item.status === 'completed' ? '✅' : '⏳';
-                        output += `        ${itemIndex + 1}. ${statusIcon} ${item.title} (ID: ${item.id})\n`;
-                    });
-                }
+            project.tasks.forEach((task) => {
+                output += formatTask(task, 0);
                 output += '\n';
             });
             output += '\n';
@@ -78,7 +93,7 @@ async function listAllTasks() {
         const projects = await request('/open/v1/project', accessToken);
         
         if (projects.length === 0) {
-            return []; // Return empty array if no projects
+            return [];
         }
 
         for (const project of projects) {
@@ -88,31 +103,42 @@ async function listAllTasks() {
                 tasks: []
             };
             const data = await request(`/open/v1/project/${project.id}/data`, accessToken);
-            const tasks = data.tasks || [];
+            const rawTasks = data.tasks || [];
             
-            if (tasks.length > 0) {
-                tasks.forEach((task) => {
-                    const taskData = {
+            if (rawTasks.length > 0) {
+                const taskMap = new Map();
+                const roots = [];
+
+                // First pass: Create task objects and map them
+                rawTasks.forEach(task => {
+                    const taskObj = {
                         id: task.id,
                         title: task.title,
                         dueDate: task.dueDate,
                         priority: task.priority,
                         content: task.content,
                         desc: task.desc,
-                        items: []
+                        parentId: task.parentId,
+                        items: (task.items || []).map(item => ({
+                            id: item.id,
+                            title: item.title,
+                            status: item.status === 1 ? 'completed' : 'pending'
+                        })),
+                        subTasks: []
                     };
-                    
-                    if (task.items && task.items.length > 0) {
-                        task.items.forEach((item) => {
-                            taskData.items.push({
-                                id: item.id,
-                                title: item.title,
-                                status: item.status === 1 ? 'completed' : 'pending'
-                            });
-                        });
-                    }
-                    projectData.tasks.push(taskData);
+                    taskMap.set(task.id, taskObj);
                 });
+
+                // Second pass: Build tree
+                taskMap.forEach(task => {
+                    if (task.parentId && taskMap.has(task.parentId)) {
+                        taskMap.get(task.parentId).subTasks.push(task);
+                    } else {
+                        roots.push(task);
+                    }
+                });
+
+                projectData.tasks = roots;
             }
             result.push(projectData);
         }
@@ -124,7 +150,6 @@ async function listAllTasks() {
 
 module.exports = listAllTasks;
 
-// Add this back for direct execution and debugging
 if (require.main === module) {
     listAllTasks()
         .then(result => {
